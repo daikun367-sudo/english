@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EchoDict — 英語辞書</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--accent:#7c6fec;--accent2:#a98cf5;--text:#e8eaf0;--text2:#9096b0;--border:#2a2f47;--green:#4ade80;--red:#f87171;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk','Noto Sans JP',sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+header{padding:14px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;}
+.logo{font-size:1.3rem;font-weight:700;letter-spacing:-0.04em;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+nav{margin-left:auto;display:flex;gap:4px;}
+.nav-btn{padding:6px 12px;border:none;border-radius:8px;font-family:inherit;font-size:0.82rem;font-weight:500;cursor:pointer;background:transparent;color:var(--text2);transition:all 0.15s;}
+.nav-btn:hover{background:var(--surface2);color:var(--text);}
+.nav-btn.active{background:var(--accent);color:#fff;}
+main{flex:1;max-width:720px;width:100%;margin:0 auto;padding:24px 16px;}
+.page{display:none;}.page.active{display:block;}
+.search-wrap{display:flex;gap:8px;margin-bottom:20px;}
+.search-input{flex:1;padding:13px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:1rem;outline:none;transition:border-color 0.15s;}
+.search-input:focus{border-color:var(--accent);}
+.search-input::placeholder{color:var(--text2);}
+.search-btn{padding:13px 18px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:0.9rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+.search-btn:hover{opacity:0.88;}
+.suggest-list{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;display:none;}
+.suggest-item{padding:10px 16px;cursor:pointer;font-size:0.92rem;border-bottom:1px solid var(--border);transition:background 0.1s;}
+.suggest-item:last-child{border-bottom:none;}
+.suggest-item:hover{background:var(--surface2);}
+.suggest-item span{color:var(--text2);font-size:0.8rem;margin-left:8px;}
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;display:none;}
+.result-card.show{display:block;}
+.result-word{font-size:1.9rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:4px;}
+.result-phonetic{color:var(--text2);font-size:0.88rem;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.speak-btn{background:var(--surface2);border:none;border-radius:8px;padding:4px 10px;color:var(--accent2);cursor:pointer;font-size:0.78rem;font-family:inherit;}
+.speak-btn:hover{background:var(--border);}
+.sec-label{font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent2);margin:14px 0 7px;}
+.meaning-block{padding:11px 13px;background:var(--surface2);border-radius:10px;margin-bottom:7px;line-height:1.6;font-size:0.92rem;}
+.pos-badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:0.7rem;font-weight:600;background:#7c6fec22;color:var(--accent2);margin-bottom:5px;}
+.example-en{color:var(--text2);font-size:0.83rem;font-style:italic;margin-top:4px;}
+.example-ja{color:var(--text2);font-size:0.8rem;margin-top:2px;}
+.save-btn{margin-top:16px;width:100%;padding:10px;background:transparent;border:1.5px solid var(--accent);border-radius:10px;color:var(--accent2);font-family:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.save-btn:hover{background:var(--accent);color:#fff;}
+.save-btn.saved{background:#4ade8022;border-color:var(--green);color:var(--green);}
+.not-found{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--text2);display:none;}
+.not-found.show{display:block;}
+.wordbook-empty{text-align:center;padding:50px 20px;color:var(--text2);}
+.word-list{display:flex;flex-direction:column;gap:8px;}
+.word-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;}
+.word-item-main{flex:1;}
+.word-item-en{font-size:1rem;font-weight:600;}
+.word-item-ja{font-size:0.82rem;color:var(--text2);margin-top:2px;}
+.word-item-actions{display:flex;gap:6px;}
+.icon-btn{background:var(--surface2);border:none;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:0.88rem;transition:background 0.12s;}
+.icon-btn:hover{background:var(--border);}
+.icon-btn.danger:hover{background:#f8717122;}
+.quiz-start{text-align:center;padding:36px 20px;}
+.quiz-start h2{font-size:1.4rem;margin-bottom:8px;}
+.quiz-start p{color:var(--text2);margin-bottom:24px;}
+.start-btn{padding:13px 32px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:0.95rem;font-weight:700;cursor:pointer;}
+.start-btn:hover{opacity:0.88;}
+.quiz-card{display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;}
+.quiz-card.show{display:block;}
+.quiz-progress{font-size:0.78rem;color:var(--text2);margin-bottom:14px;display:flex;justify-content:space-between;}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width 0.3s;}
+.quiz-question{font-size:1.55rem;font-weight:700;text-align:center;margin-bottom:6px;}
+.quiz-hint{text-align:center;color:var(--text2);font-size:0.82rem;margin-bottom:22px;}
+.quiz-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.choice-btn{padding:13px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:0.87rem;cursor:pointer;transition:all 0.12s;line-height:1.4;}
+.choice-btn:hover:not(:disabled){border-color:var(--accent);background:var(--surface);}
+.choice-btn.correct{border-color:var(--green);background:#4ade8018;color:var(--green);}
+.choice-btn.wrong{border-color:var(--red);background:#f8717118;color:var(--red);}
+.choice-btn:disabled{cursor:default;}
+.quiz-result{display:none;text-align:center;padding:28px;}
+.quiz-result.show{display:block;}
+.score-circle{width:100px;height:100px;border-radius:50%;border:4px solid var(--accent);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 18px;}
+.score-num{font-size:1.9rem;font-weight:700;}
+.score-label{font-size:0.72rem;color:var(--text2);}
+.retry-btn{margin-top:18px;padding:11px 28px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:inherit;font-size:0.92rem;font-weight:600;cursor:pointer;}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--border);padding:9px 18px;border-radius:10px;font-size:0.88rem;transition:transform 0.25s;z-index:200;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.count-badge{font-size:0.78rem;color:var(--text2);margin-bottom:16px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">EchoDict</div>
+  <nav>
+    <button class="nav-btn active" onclick="showPage('search',this)">🔍 検索</button>
+    <button class="nav-btn" onclick="showPage('wordbook',this)">📖 単語帳</button>
+    <button class="nav-btn" onclick="showPage('quiz',this)">🎯 クイズ</button>
+  </nav>
+</header>
+<main>
+  <div class="page active" id="page-search">
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" type="text" placeholder="英単語を入力... (例: beautiful)" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <button class="search-btn" onclick="searchWord()">調べる</button>
+    </div>
+    <div class="suggest-list" id="suggestList"></div>
+    <div class="not-found" id="notFound"></div>
+    <div class="result-card" id="resultCard">
+      <div class="result-word" id="resWord"></div>
+      <div class="result-phonetic">
+        <span id="resPhonetic"></span>
+        <button class="speak-btn" onclick="speakWord()">🔊 発音</button>
+      </div>
+      <div id="resMeanings"></div>
+      <button class="save-btn" id="saveBtn" onclick="saveWord()">＋ 単語帳に追加</button>
+    </div>
+  </div>
+  <div class="page" id="page-wordbook">
+    <h2 style="font-size:1.2rem;margin-bottom:6px;">📖 単語帳</h2>
+    <div class="count-badge" id="wbCount"></div>
+    <div id="wordbookContent"></div>
+  </div>
+  <div class="page" id="page-quiz">
+    <div class="quiz-start" id="quizStart">
+      <h2>🎯 暗記クイズ</h2>
+      <p>単語帳の単語で4択クイズ！</p>
+      <button class="start-btn" onclick="startQuiz()">スタート</button>
+    </div>
+    <div class="quiz-card" id="quizCard">
+      <div class="quiz-progress">
+        <span id="quizProgressText"></span>
+        <span id="quizScoreText">正解: 0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="quiz-question" id="quizQuestion"></div>
+      <div class="quiz-hint">この単語の意味は？</div>
+      <div class="quiz-choices" id="quizChoices"></div>
+    </div>
+    <div class="quiz-result" id="quizResult">
+      <div class="score-circle">
+        <div class="score-num" id="finalScore"></div>
+        <div class="score-label">正解</div>
+      </div>
+      <div id="finalMsg" style="color:var(--text2);margin-bottom:8px;"></div>
+      <button class="retry-btn" onclick="startQuiz()">もう一度</button>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+// ===== 内蔵辞書 =====
+const DICT = {
+"apple":{"w":"apple","p":"/ˈæpəl/","m":[{"pos":"名詞","ja":"リンゴ","ex":"I eat an apple every day.","exj":"私は毎日リンゴを食べます。"}]},
+"bag":{"w":"bag","p":"/bæɡ/","m":[{"pos":"名詞","ja":"かばん、袋","ex":"She carries a big bag.","exj":"彼女は大きなかばんを持っています。"}]},
+"ball":{"w":"ball","p":"/bɔːl/","m":[{"pos":"名詞","ja":"ボール、球","ex":"Kick the ball!","exj":"ボールを蹴って！"}]},
+"beautiful":{"w":"beautiful","p":"/ˈbjuːtɪfəl/","m":[{"pos":"形容詞","ja":"美しい、綺麗な","ex":"What a beautiful sunset!","exj":"なんて美しい夕焼けでしょう！"}]},
+"bed":{"w":"bed","p":"/bed/","m":[{"pos":"名詞","ja":"ベッド、寝台","ex":"I go to bed at ten.","exj":"私は10時に寝ます。"}]},
+"big":{"w":"big","p":"/bɪɡ/","m":[{"pos":"形容詞","ja":"大きい","ex":"This is a big city.","exj":"これは大きな都市です。"}]},
+"bird":{"w":"bird","p":"/bɜːrd/","m":[{"pos":"名詞","ja":"鳥","ex":"A bird is singing in the tree.","exj":"木の中で鳥が歌っています。"}]},
+"black":{"w":"black","p":"/blæk/","m":[{"pos":"形容詞","ja":"黒い、黒色の","ex":"She has black hair.","exj":"彼女は黒い髪をしています。"}]},
+"blue":{"w":"blue","p":"/bluː/","m":[{"pos":"形容詞","ja":"青い","ex":"The sky is blue.","exj":"空は青いです。"}]},
+"book":{"w":"book","p":"/bʊk/","m":[{"pos":"名詞","ja":"本、書籍","ex":"She reads a book before bed.","exj":"彼女は寝る前に本を読みます。"},{"pos":"動詞","ja":"予約する","ex":"I'd like to book a table.","exj":"テーブルを予約したいのですが。"}]},
+"box":{"w":"box","p":"/bɒks/","m":[{"pos":"名詞","ja":"箱","ex":"Put it in the box.","exj":"箱に入れてください。"}]},
+"boy":{"w":"boy","p":"/bɔɪ/","m":[{"pos":"名詞","ja":"男の子、少年","ex":"The boy is playing soccer.","exj":"その男の子はサッカーをしています。"}]},
+"bread":{"w":"bread","p":"/bred/","m":[{"pos":"名詞","ja":"パン","ex":"I have bread for breakfast.","exj":"朝食にパンを食べます。"}]},
+"bus":{"w":"bus","p":"/bʌs/","m":[{"pos":"名詞","ja":"バス","ex":"I take the bus to school.","exj":"バスで学校に行きます。"}]},
+"busy":{"w":"busy","p":"/ˈbɪzi/","m":[{"pos":"形容詞","ja":"忙しい","ex":"I'm very busy today.","exj":"今日はとても忙しいです。"}]},
+"buy":{"w":"buy","p":"/baɪ/","m":[{"pos":"動詞","ja":"買う","ex":"I want to buy a new game.","exj":"新しいゲームを買いたいです。"}]},
+"camera":{"w":"camera","p":"/ˈkæmərə/","m":[{"pos":"名詞","ja":"カメラ","ex":"He took a photo with his camera.","exj":"彼はカメラで写真を撮りました。"}]},
+"car":{"w":"car","p":"/kɑːr/","m":[{"pos":"名詞","ja":"車、自動車","ex":"My father drives a car.","exj":"父は車を運転します。"}]},
+"cat":{"w":"cat","p":"/kæt/","m":[{"pos":"名詞","ja":"猫","ex":"The cat is sleeping on the sofa.","exj":"猫がソファで寝ています。"}]},
+"city":{"w":"city","p":"/ˈsɪti/","m":[{"pos":"名詞","ja":"都市、市","ex":"Tokyo is a big city.","exj":"東京は大きな都市です。"}]},
+"class":{"w":"class","p":"/klæs/","m":[{"pos":"名詞","ja":"クラス、授業","ex":"English class is fun.","exj":"英語の授業は楽しいです。"}]},
+"clean":{"w":"clean","p":"/kliːn/","m":[{"pos":"形容詞","ja":"きれいな、清潔な","ex":"Keep your room clean.","exj":"部屋をきれいに保ちましょう。"},{"pos":"動詞","ja":"掃除する","ex":"I clean my room on Sundays.","exj":"日曜日に部屋を掃除します。"}]},
+"cloudy":{"w":"cloudy","p":"/ˈklaʊdi/","m":[{"pos":"形容詞","ja":"曇った","ex":"It's cloudy today.","exj":"今日は曇っています。"}]},
+"cold":{"w":"cold","p":"/koʊld/","m":[{"pos":"形容詞","ja":"寒い、冷たい","ex":"It's very cold in winter.","exj":"冬はとても寒いです。"},{"pos":"名詞","ja":"風邪","ex":"I have a cold.","exj":"風邪をひいています。"}]},
+"color":{"w":"color","p":"/ˈkʌlər/","m":[{"pos":"名詞","ja":"色","ex":"What is your favorite color?","exj":"好きな色は何ですか？"}]},
+"come":{"w":"come","p":"/kʌm/","m":[{"pos":"動詞","ja":"来る","ex":"Please come here.","exj":"ここに来てください。"}]},
+"computer":{"w":"computer","p":"/kəmˈpjuːtər/","m":[{"pos":"名詞","ja":"コンピュータ","ex":"I use a computer every day.","exj":"毎日コンピュータを使います。"}]},
+"cook":{"w":"cook","p":"/kʊk/","m":[{"pos":"動詞","ja":"料理する","ex":"My mother cooks dinner.","exj":"母が夕食を作ります。"},{"pos":"名詞","ja":"料理人、コック","ex":"He is a good cook.","exj":"彼は料理が上手です。"}]},
+"cool":{"w":"cool","p":"/kuːl/","m":[{"pos":"形容詞","ja":"涼しい、かっこいい","ex":"That design is really cool!","exj":"そのデザインは本当にかっこいい！"}]},
+"country":{"w":"country","p":"/ˈkʌntri/","m":[{"pos":"名詞","ja":"国、田舎","ex":"Japan is a beautiful country.","exj":"日本は美しい国です。"}]},
+"cute":{"w":"cute","p":"/kjuːt/","m":[{"pos":"形容詞","ja":"かわいい","ex":"The puppy is so cute.","exj":"その子犬はとてもかわいいです。"}]},
+"dance":{"w":"dance","p":"/dæns/","m":[{"pos":"動詞","ja":"踊る","ex":"She loves to dance.","exj":"彼女は踊るのが大好きです。"},{"pos":"名詞","ja":"ダンス、踊り","ex":"Let's do a dance together.","exj":"一緒にダンスしましょう。"}]},
+"dark":{"w":"dark","p":"/dɑːrk/","m":[{"pos":"形容詞","ja":"暗い、ダークな","ex":"It gets dark early in winter.","exj":"冬は早く暗くなります。"}]},
+"day":{"w":"day","p":"/deɪ/","m":[{"pos":"名詞","ja":"日、昼","ex":"Have a nice day!","exj":"良い一日を！"}]},
+"delicious":{"w":"delicious","p":"/dɪˈlɪʃəs/","m":[{"pos":"形容詞","ja":"おいしい","ex":"This ramen is delicious!","exj":"このラーメンはおいしい！"}]},
+"desk":{"w":"desk","p":"/desk/","m":[{"pos":"名詞","ja":"机","ex":"My books are on the desk.","exj":"本が机の上にあります。"}]},
+"difficult":{"w":"difficult","p":"/ˈdɪfɪkəlt/","m":[{"pos":"形容詞","ja":"難しい","ex":"Math is difficult for me.","exj":"数学は私には難しいです。"}]},
+"dog":{"w":"dog","p":"/dɔːɡ/","m":[{"pos":"名詞","ja":"犬","ex":"My dog loves to play fetch.","exj":"私の犬はボール投げが大好きです。"}]},
+"door":{"w":"door","p":"/dɔːr/","m":[{"pos":"名詞","ja":"ドア、扉","ex":"Please close the door.","exj":"ドアを閉めてください。"}]},
+"dream":{"w":"dream","p":"/driːm/","m":[{"pos":"名詞","ja":"夢","ex":"I have a dream to become a game developer.","exj":"ゲーム開発者になるという夢があります。"},{"pos":"動詞","ja":"夢を見る","ex":"I dreamed about flying last night.","exj":"昨夜、空を飛ぶ夢を見ました。"}]},
+"drink":{"w":"drink","p":"/drɪŋk/","m":[{"pos":"動詞","ja":"飲む","ex":"Drink more water every day.","exj":"毎日もっと水を飲もう。"},{"pos":"名詞","ja":"飲み物","ex":"What would you like to drink?","exj":"何を飲みますか？"}]},
+"drive":{"w":"drive","p":"/draɪv/","m":[{"pos":"動詞","ja":"運転する","ex":"He drives to work.","exj":"彼は車で仕事に行きます。"}]},
+"eat":{"w":"eat","p":"/iːt/","m":[{"pos":"動詞","ja":"食べる","ex":"I eat rice for breakfast.","exj":"朝食にご飯を食べます。"}]},
+"egg":{"w":"egg","p":"/eɡ/","m":[{"pos":"名詞","ja":"卵","ex":"I had an egg for breakfast.","exj":"朝食に卵を食べました。"}]},
+"English":{"w":"English","p":"/ˈɪŋɡlɪʃ/","m":[{"pos":"名詞","ja":"英語","ex":"I study English every day.","exj":"毎日英語を勉強します。"},{"pos":"形容詞","ja":"英語の、英国の","ex":"Do you like English music?","exj":"英語の音楽は好きですか？"}]},
+"enjoy":{"w":"enjoy","p":"/ɪnˈdʒɔɪ/","m":[{"pos":"動詞","ja":"楽しむ","ex":"I enjoy playing games.","exj":"ゲームをするのを楽しんでいます。"}]},
+"evening":{"w":"evening","p":"/ˈiːvnɪŋ/","m":[{"pos":"名詞","ja":"夕方、夜","ex":"Good evening!","exj":"こんばんは！"}]},
+"exciting":{"w":"exciting","p":"/ɪkˈsaɪtɪŋ/","m":[{"pos":"形容詞","ja":"わくわくする、刺激的な","ex":"The game was very exciting.","exj":"そのゲームはとてもわくわくしました。"}]},
+"expensive":{"w":"expensive","p":"/ɪkˈspensɪv/","m":[{"pos":"形容詞","ja":"高い（値段）、高価な","ex":"This phone is too expensive.","exj":"このスマホは高すぎます。"}]},
+"eye":{"w":"eye","p":"/aɪ/","m":[{"pos":"名詞","ja":"目","ex":"She has beautiful eyes.","exj":"彼女は美しい目をしています。"}]},
+"face":{"w":"face","p":"/feɪs/","m":[{"pos":"名詞","ja":"顔","ex":"Wash your face every morning.","exj":"毎朝顔を洗いましょう。"}]},
+"family":{"w":"family","p":"/ˈfæməli/","m":[{"pos":"名詞","ja":"家族","ex":"I love my family.","exj":"私は家族が大好きです。"}]},
+"fast":{"w":"fast","p":"/fæst/","m":[{"pos":"形容詞","ja":"速い","ex":"He is a fast runner.","exj":"彼は足が速いです。"},{"pos":"副詞","ja":"速く","ex":"She runs fast.","exj":"彼女は速く走ります。"}]},
+"flower":{"w":"flower","p":"/ˈflaʊər/","m":[{"pos":"名詞","ja":"花","ex":"These flowers are beautiful.","exj":"これらの花は美しいです。"}]},
+"food":{"w":"food","p":"/fuːd/","m":[{"pos":"名詞","ja":"食べ物、料理","ex":"Japanese food is delicious.","exj":"日本食はとても美味しいです。"}]},
+"free":{"w":"free","p":"/friː/","m":[{"pos":"形容詞","ja":"自由な、無料の","ex":"The app is free to download.","exj":"そのアプリは無料でダウンロードできます。"}]},
+"friend":{"w":"friend","p":"/frend/","m":[{"pos":"名詞","ja":"友達、友人","ex":"He is my best friend.","exj":"彼は私の親友です。"}]},
+"fun":{"w":"fun","p":"/fʌn/","m":[{"pos":"名詞","ja":"楽しみ","ex":"Gaming is so much fun!","exj":"ゲームはとても楽しい！"},{"pos":"形容詞","ja":"楽しい","ex":"That was a fun event.","exj":"楽しいイベントでした。"}]},
+"game":{"w":"game","p":"/ɡeɪm/","m":[{"pos":"名詞","ja":"ゲーム、試合","ex":"Let's play a video game!","exj":"ビデオゲームをやろう！"}]},
+"get":{"w":"get","p":"/ɡet/","m":[{"pos":"動詞","ja":"得る、なる、手に入れる","ex":"I got a new computer.","exj":"新しいコンピュータを手に入れました。"}]},
+"girl":{"w":"girl","p":"/ɡɜːrl/","m":[{"pos":"名詞","ja":"女の子、少女","ex":"The girl is singing.","exj":"その女の子は歌っています。"}]},
+"give":{"w":"give","p":"/ɡɪv/","m":[{"pos":"動詞","ja":"与える、あげる","ex":"Give me your hand.","exj":"手を貸してください。"}]},
+"go":{"w":"go","p":"/ɡoʊ/","m":[{"pos":"動詞","ja":"行く","ex":"Let's go to the park.","exj":"公園に行こう。"}]},
+"good":{"w":"good","p":"/ɡʊd/","m":[{"pos":"形容詞","ja":"良い、上手な","ex":"Good job!","exj":"よくできました！"}]},
+"goodbye":{"w":"goodbye","p":"/ˌɡʊdˈbaɪ/","m":[{"pos":"感動詞","ja":"さようなら","ex":"Goodbye, see you tomorrow!","exj":"さようなら、また明日！"}]},
+"green":{"w":"green","p":"/ɡriːn/","m":[{"pos":"形容詞","ja":"緑の","ex":"The leaves are green.","exj":"葉っぱは緑色です。"}]},
+"hand":{"w":"hand","p":"/hænd/","m":[{"pos":"名詞","ja":"手","ex":"Raise your hand if you know.","exj":"わかる人は手を挙げてください。"}]},
+"happy":{"w":"happy","p":"/ˈhæpi/","m":[{"pos":"形容詞","ja":"幸せな、嬉しい","ex":"She looks very happy today.","exj":"彼女は今日とても幸せそうです。"}]},
+"hard":{"w":"hard","p":"/hɑːrd/","m":[{"pos":"形容詞","ja":"難しい、硬い","ex":"This quiz is hard.","exj":"このクイズは難しいです。"},{"pos":"副詞","ja":"一生懸命に","ex":"Study hard for the exam.","exj":"試験に向けて一生懸命勉強しよう。"}]},
+"hat":{"w":"hat","p":"/hæt/","m":[{"pos":"名詞","ja":"帽子","ex":"She wears a red hat.","exj":"彼女は赤い帽子をかぶっています。"}]},
+"hello":{"w":"hello","p":"/həˈloʊ/","m":[{"pos":"感動詞","ja":"こんにちは、やあ","ex":"Hello! How are you?","exj":"こんにちは！元気ですか？"}]},
+"help":{"w":"help","p":"/help/","m":[{"pos":"動詞","ja":"助ける、手伝う","ex":"Can you help me?","exj":"手伝ってもらえますか？"},{"pos":"名詞","ja":"助け、手伝い","ex":"I need your help.","exj":"あなたの助けが必要です。"}]},
+"high":{"w":"high","p":"/haɪ/","m":[{"pos":"形容詞","ja":"高い","ex":"The mountain is very high.","exj":"その山はとても高いです。"}]},
+"home":{"w":"home","p":"/hoʊm/","m":[{"pos":"名詞","ja":"家、自宅","ex":"I go home after school.","exj":"放課後家に帰ります。"}]},
+"hot":{"w":"hot","p":"/hɒt/","m":[{"pos":"形容詞","ja":"暑い、熱い","ex":"It's hot in summer.","exj":"夏は暑いです。"}]},
+"house":{"w":"house","p":"/haʊs/","m":[{"pos":"名詞","ja":"家、住宅","ex":"They live in a big house.","exj":"彼らは大きな家に住んでいます。"}]},
+"hungry":{"w":"hungry","p":"/ˈhʌŋɡri/","m":[{"pos":"形容詞","ja":"お腹が空いた","ex":"I'm hungry. Let's eat!","exj":"お腹が空きました。食べましょう！"}]},
+"important":{"w":"important","p":"/ɪmˈpɔːrtənt/","m":[{"pos":"形容詞","ja":"重要な、大切な","ex":"This is very important.","exj":"これはとても重要です。"}]},
+"interesting":{"w":"interesting","p":"/ˈɪntrəstɪŋ/","m":[{"pos":"形容詞","ja":"面白い、興味深い","ex":"This book is interesting.","exj":"この本は面白いです。"}]},
+"internet":{"w":"internet","p":"/ˈɪntərnet/","m":[{"pos":"名詞","ja":"インターネット","ex":"I search on the internet.","exj":"インターネットで検索します。"}]},
+"Japan":{"w":"Japan","p":"/dʒəˈpæn/","m":[{"pos":"名詞","ja":"日本","ex":"I live in Japan.","exj":"私は日本に住んでいます。"}]},
+"Japanese":{"w":"Japanese","p":"/ˌdʒæpəˈniːz/","m":[{"pos":"名詞","ja":"日本語、日本人","ex":"I speak Japanese.","exj":"日本語を話します。"},{"pos":"形容詞","ja":"日本の","ex":"Japanese food is great.","exj":"日本食は素晴らしいです。"}]},
+"know":{"w":"know","p":"/noʊ/","m":[{"pos":"動詞","ja":"知っている、わかる","ex":"Do you know the answer?","exj":"答えを知っていますか？"}]},
+"large":{"w":"large","p":"/lɑːrdʒ/","m":[{"pos":"形容詞","ja":"大きい、広い","ex":"She has a large collection.","exj":"彼女は大きなコレクションを持っています。"}]},
+"learn":{"w":"learn","p":"/lɜːrn/","m":[{"pos":"動詞","ja":"学ぶ、覚える","ex":"I want to learn programming.","exj":"プログラミングを学びたいです。"}]},
+"like":{"w":"like","p":"/laɪk/","m":[{"pos":"動詞","ja":"好む、好き","ex":"I like music.","exj":"音楽が好きです。"},{"pos":"前置詞","ja":"〜のような","ex":"She sings like a pro.","exj":"彼女はプロのように歌います。"}]},
+"listen":{"w":"listen","p":"/ˈlɪsən/","m":[{"pos":"動詞","ja":"聞く、耳を傾ける","ex":"Listen to the music.","exj":"音楽を聴いてください。"}]},
+"long":{"w":"long","p":"/lɔːŋ/","m":[{"pos":"形容詞","ja":"長い","ex":"She has long hair.","exj":"彼女は長い髪をしています。"}]},
+"look":{"w":"look","p":"/lʊk/","m":[{"pos":"動詞","ja":"見る、見える","ex":"Look at that!","exj":"あれを見て！"}]},
+"love":{"w":"love","p":"/lʌv/","m":[{"pos":"名詞","ja":"愛、愛情","ex":"Love is a wonderful feeling.","exj":"愛は素晴らしい感情です。"},{"pos":"動詞","ja":"愛する、大好き","ex":"I love playing games.","exj":"ゲームをするのが大好きです。"}]},
+"lunch":{"w":"lunch","p":"/lʌntʃ/","m":[{"pos":"名詞","ja":"昼食、ランチ","ex":"Let's have lunch together.","exj":"一緒にランチを食べましょう。"}]},
+"make":{"w":"make","p":"/meɪk/","m":[{"pos":"動詞","ja":"作る、〜にする","ex":"I make games for fun.","exj":"趣味でゲームを作ります。"}]},
+"many":{"w":"many","p":"/ˈmeni/","m":[{"pos":"形容詞","ja":"多くの","ex":"There are many stars tonight.","exj":"今夜は星がたくさんあります。"}]},
+"money":{"w":"money","p":"/ˈmʌni/","m":[{"pos":"名詞","ja":"お金","ex":"I save money every month.","exj":"毎月お金を貯めています。"}]},
+"morning":{"w":"morning","p":"/ˈmɔːrnɪŋ/","m":[{"pos":"名詞","ja":"朝","ex":"Good morning!","exj":"おはようございます！"}]},
+"movie":{"w":"movie","p":"/ˈmuːvi/","m":[{"pos":"名詞","ja":"映画","ex":"Let's watch a movie tonight.","exj":"今夜映画を見よう。"}]},
+"music":{"w":"music","p":"/ˈmjuːzɪk/","m":[{"pos":"名詞","ja":"音楽","ex":"Music makes me feel relaxed.","exj":"音楽を聴くとリラックスできます。"}]},
+"name":{"w":"name","p":"/neɪm/","m":[{"pos":"名詞","ja":"名前","ex":"What is your name?","exj":"あなたの名前は何ですか？"}]},
+"new":{"w":"new","p":"/njuː/","m":[{"pos":"形容詞","ja":"新しい","ex":"I got a new phone!","exj":"新しいスマホを手に入れました！"}]},
+"nice":{"w":"nice","p":"/naɪs/","m":[{"pos":"形容詞","ja":"良い、素敵な","ex":"Nice to meet you!","exj":"はじめまして！"}]},
+"night":{"w":"night","p":"/naɪt/","m":[{"pos":"名詞","ja":"夜","ex":"Good night!","exj":"おやすみなさい！"}]},
+"now":{"w":"now","p":"/naʊ/","m":[{"pos":"副詞","ja":"今、現在","ex":"What are you doing now?","exj":"今何をしていますか？"}]},
+"old":{"w":"old","p":"/oʊld/","m":[{"pos":"形容詞","ja":"古い、年を取った","ex":"This is an old building.","exj":"これは古い建物です。"}]},
+"open":{"w":"open","p":"/ˈoʊpən/","m":[{"pos":"動詞","ja":"開ける、開く","ex":"Open the door, please.","exj":"ドアを開けてください。"},{"pos":"形容詞","ja":"開いている","ex":"The shop is open now.","exj":"お店は今開いています。"}]},
+"orange":{"w":"orange","p":"/ˈɔːrɪndʒ/","m":[{"pos":"名詞","ja":"オレンジ","ex":"I'd like some orange juice.","exj":"オレンジジュースをください。"},{"pos":"形容詞","ja":"オレンジ色の","ex":"The sun looks orange at sunset.","exj":"夕日でオレンジ色に見えます。"}]},
+"people":{"w":"people","p":"/ˈpiːpəl/","m":[{"pos":"名詞","ja":"人々","ex":"Many people use smartphones.","exj":"多くの人がスマートフォンを使っています。"}]},
+"phone":{"w":"phone","p":"/foʊn/","m":[{"pos":"名詞","ja":"電話、スマートフォン","ex":"My phone has a great camera.","exj":"私のスマホはカメラが良いです。"}]},
+"place":{"w":"place","p":"/pleɪs/","m":[{"pos":"名詞","ja":"場所","ex":"This is a great place to visit.","exj":"ここは訪れるのに素晴らしい場所です。"}]},
+"play":{"w":"play","p":"/pleɪ/","m":[{"pos":"動詞","ja":"遊ぶ、弾く、プレイする","ex":"I play games after school.","exj":"放課後ゲームをします。"},{"pos":"名詞","ja":"遊び、劇","ex":"Let's play together!","exj":"一緒に遊ぼう！"}]},
+"popular":{"w":"popular","p":"/ˈpɒpjələr/","m":[{"pos":"形容詞","ja":"人気のある","ex":"This game is very popular.","exj":"このゲームはとても人気があります。"}]},
+"practice":{"w":"practice","p":"/ˈpræktɪs/","m":[{"pos":"名詞","ja":"練習","ex":"Practice makes perfect.","exj":"練習は完璧を作る（習うより慣れろ）。"},{"pos":"動詞","ja":"練習する","ex":"I practice English every day.","exj":"毎日英語の練習をします。"}]},
+"pretty":{"w":"pretty","p":"/ˈprɪti/","m":[{"pos":"形容詞","ja":"かわいい、きれいな","ex":"She has a pretty smile.","exj":"彼女は素敵な笑顔をしています。"}]},
+"program":{"w":"program","p":"/ˈproʊɡræm/","m":[{"pos":"名詞","ja":"プログラム","ex":"I made a program in Python.","exj":"Pythonでプログラムを作りました。"},{"pos":"動詞","ja":"プログラムする","ex":"Do you know how to program?","exj":"プログラムの仕方を知っていますか？"}]},
+"purple":{"w":"purple","p":"/ˈpɜːrpəl/","m":[{"pos":"形容詞","ja":"紫の","ex":"The flower is purple.","exj":"その花は紫色です。"}]},
+"question":{"w":"question","p":"/ˈkwestʃən/","m":[{"pos":"名詞","ja":"質問","ex":"Do you have any questions?","exj":"何か質問はありますか？"}]},
+"quick":{"w":"quick","p":"/kwɪk/","m":[{"pos":"形容詞","ja":"速い、素早い","ex":"Be quick, we're late!","exj":"急いで、遅刻しますよ！"}]},
+"quiet":{"w":"quiet","p":"/ˈkwaɪət/","m":[{"pos":"形容詞","ja":"静かな","ex":"Please be quiet in class.","exj":"授業中は静かにしてください。"}]},
+"rain":{"w":"rain","p":"/reɪn/","m":[{"pos":"名詞","ja":"雨","ex":"I love the sound of rain.","exj":"雨の音が好きです。"},{"pos":"動詞","ja":"雨が降る","ex":"It will rain tomorrow.","exj":"明日は雨が降るでしょう。"}]},
+"read":{"w":"read","p":"/riːd/","m":[{"pos":"動詞","ja":"読む","ex":"I read manga every night.","exj":"毎晩漫画を読みます。"}]},
+"red":{"w":"red","p":"/red/","m":[{"pos":"形容詞","ja":"赤い","ex":"I like the red one.","exj":"赤いものが好きです。"}]},
+"rice":{"w":"rice","p":"/raɪs/","m":[{"pos":"名詞","ja":"ご飯、米","ex":"I eat rice every day.","exj":"毎日ご飯を食べます。"}]},
+"run":{"w":"run","p":"/rʌn/","m":[{"pos":"動詞","ja":"走る","ex":"I run every morning.","exj":"毎朝走ります。"},{"pos":"名詞","ja":"ランニング","ex":"Let's go for a run.","exj":"ランニングしに行こう。"}]},
+"school":{"w":"school","p":"/skuːl/","m":[{"pos":"名詞","ja":"学校","ex":"I go to school by bike.","exj":"自転車で学校に行きます。"}]},
+"sea":{"w":"sea","p":"/siː/","m":[{"pos":"名詞","ja":"海","ex":"The sea is beautiful today.","exj":"今日の海は美しいです。"}]},
+"see":{"w":"see","p":"/siː/","m":[{"pos":"動詞","ja":"見る、わかる","ex":"I see what you mean.","exj":"あなたの言っていることがわかります。"}]},
+"sing":{"w":"sing","p":"/sɪŋ/","m":[{"pos":"動詞","ja":"歌う","ex":"She sings beautifully.","exj":"彼女は美しく歌います。"}]},
+"sky":{"w":"sky","p":"/skaɪ/","m":[{"pos":"名詞","ja":"空","ex":"The sky is clear today.","exj":"今日は空が澄んでいます。"}]},
+"sleep":{"w":"sleep","p":"/sliːp/","m":[{"pos":"動詞","ja":"眠る","ex":"I sleep eight hours a day.","exj":"1日8時間眠ります。"},{"pos":"名詞","ja":"睡眠","ex":"Get enough sleep.","exj":"十分な睡眠をとりましょう。"}]},
+"slow":{"w":"slow","p":"/sloʊ/","m":[{"pos":"形容詞","ja":"遅い","ex":"This computer is slow.","exj":"このパソコンは遅いです。"}]},
+"small":{"w":"small","p":"/smɔːl/","m":[{"pos":"形容詞","ja":"小さい","ex":"It's a small but cute room.","exj":"小さいけどかわいい部屋です。"}]},
+"smart":{"w":"smart","p":"/smɑːrt/","m":[{"pos":"形容詞","ja":"賢い、スマート","ex":"She is a smart student.","exj":"彼女は賢い生徒です。"}]},
+"smile":{"w":"smile","p":"/smaɪl/","m":[{"pos":"名詞","ja":"笑顔、微笑み","ex":"Her smile is so warm.","exj":"彼女の笑顔はとても温かいです。"},{"pos":"動詞","ja":"微笑む","ex":"Please smile for the photo!","exj":"写真に向かって笑顔で！"}]},
+"snow":{"w":"snow","p":"/snoʊ/","m":[{"pos":"名詞","ja":"雪","ex":"It snowed last night.","exj":"昨夜雪が降りました。"}]},
+"song":{"w":"song","p":"/sɔːŋ/","m":[{"pos":"名詞","ja":"歌、曲","ex":"This is my favorite song.","exj":"これは私のお気に入りの曲です。"}]},
+"speak":{"w":"speak","p":"/spiːk/","m":[{"pos":"動詞","ja":"話す","ex":"Do you speak English?","exj":"英語を話しますか？"}]},
+"sport":{"w":"sport","p":"/spɔːrt/","m":[{"pos":"名詞","ja":"スポーツ","ex":"Soccer is a popular sport.","exj":"サッカーは人気のあるスポーツです。"}]},
+"star":{"w":"star","p":"/stɑːr/","m":[{"pos":"名詞","ja":"星、スター","ex":"The stars are bright tonight.","exj":"今夜は星が輝いています。"}]},
+"stop":{"w":"stop","p":"/stɒp/","m":[{"pos":"動詞","ja":"止まる、やめる","ex":"Stop and look both ways.","exj":"止まって左右を確認しましょう。"}]},
+"story":{"w":"story","p":"/ˈstɔːri/","m":[{"pos":"名詞","ja":"話、物語","ex":"Tell me a story.","exj":"お話を聞かせてください。"}]},
+"strong":{"w":"strong","p":"/strɔːŋ/","m":[{"pos":"形容詞","ja":"強い","ex":"She has a strong will.","exj":"彼女は強い意志を持っています。"}]},
+"student":{"w":"student","p":"/ˈstjuːdənt/","m":[{"pos":"名詞","ja":"学生、生徒","ex":"I am a junior high school student.","exj":"私は中学生です。"}]},
+"study":{"w":"study","p":"/ˈstʌdi/","m":[{"pos":"動詞","ja":"勉強する","ex":"I study English every day.","exj":"毎日英語を勉強しています。"},{"pos":"名詞","ja":"勉強、書斎","ex":"Study hard for your exam.","exj":"試験のためにしっかり勉強しよう。"}]},
+"summer":{"w":"summer","p":"/ˈsʌmər/","m":[{"pos":"名詞","ja":"夏","ex":"Summer is my favorite season.","exj":"夏は私の好きな季節です。"}]},
+"sun":{"w":"sun","p":"/sʌn/","m":[{"pos":"名詞","ja":"太陽","ex":"The sun is very bright today.","exj":"今日の太陽はとても明るいです。"}]},
+"swim":{"w":"swim","p":"/swɪm/","m":[{"pos":"動詞","ja":"泳ぐ","ex":"I swim at the pool every week.","exj":"毎週プールで泳ます。"}]},
+"take":{"w":"take","p":"/teɪk/","m":[{"pos":"動詞","ja":"取る、持っていく、（時間が）かかる","ex":"It takes 20 minutes by bus.","exj":"バスで20分かかります。"}]},
+"talk":{"w":"talk","p":"/tɔːk/","m":[{"pos":"動詞","ja":"話す、しゃべる","ex":"Let's talk about the game.","exj":"そのゲームについて話しましょう。"},{"pos":"名詞","ja":"話、おしゃべり","ex":"We had a long talk.","exj":"長い時間話しました。"}]},
+"teacher":{"w":"teacher","p":"/ˈtiːtʃər/","m":[{"pos":"名詞","ja":"先生、教師","ex":"My English teacher is kind.","exj":"英語の先生は親切です。"}]},
+"team":{"w":"team","p":"/tiːm/","m":[{"pos":"名詞","ja":"チーム","ex":"Our team won the game!","exj":"私たちのチームが試合に勝ちました！"}]},
+"test":{"w":"test","p":"/test/","m":[{"pos":"名詞","ja":"テスト、試験","ex":"I have a test tomorrow.","exj":"明日テストがあります。"},{"pos":"動詞","ja":"テストする","ex":"Test your code before submitting.","exj":"提出前にコードをテストしよう。"}]},
+"think":{"w":"think","p":"/θɪŋk/","m":[{"pos":"動詞","ja":"考える、思う","ex":"I think it's a great idea.","exj":"それは素晴らしいアイデアだと思います。"}]},
+"time":{"w":"time","p":"/taɪm/","m":[{"pos":"名詞","ja":"時間、時刻","ex":"What time is it now?","exj":"今何時ですか？"}]},
+"today":{"w":"today","p":"/təˈdeɪ/","m":[{"pos":"名詞","ja":"今日","ex":"Today is a great day!","exj":"今日は素晴らしい日です！"}]},
+"together":{"w":"together","p":"/təˈɡeðər/","m":[{"pos":"副詞","ja":"一緒に","ex":"Let's do it together!","exj":"一緒にやろう！"}]},
+"town":{"w":"town","p":"/taʊn/","m":[{"pos":"名詞","ja":"町","ex":"I love my town.","exj":"自分の町が大好きです。"}]},
+"travel":{"w":"travel","p":"/ˈtrævəl/","m":[{"pos":"動詞","ja":"旅行する","ex":"I want to travel the world.","exj":"世界を旅したいです。"},{"pos":"名詞","ja":"旅行","ex":"Travel broadens the mind.","exj":"旅は心を広げます。"}]},
+"tree":{"w":"tree","p":"/triː/","m":[{"pos":"名詞","ja":"木、樹木","ex":"There is a big tree in the park.","exj":"公園に大きな木があります。"}]},
+"try":{"w":"try","p":"/traɪ/","m":[{"pos":"動詞","ja":"試みる、やってみる","ex":"Try your best!","exj":"ベストを尽くして！"}]},
+"turn":{"w":"turn","p":"/tɜːrn/","m":[{"pos":"動詞","ja":"回る、向きを変える","ex":"Turn left at the corner.","exj":"角を左に曲がってください。"},{"pos":"名詞","ja":"順番、ターン","ex":"It's your turn!","exj":"あなたの番です！"}]},
+"understand":{"w":"understand","p":"/ˌʌndərˈstænd/","m":[{"pos":"動詞","ja":"理解する、わかる","ex":"Do you understand?","exj":"わかりますか？"}]},
+"use":{"w":"use","p":"/juːz/","m":[{"pos":"動詞","ja":"使う","ex":"I use a computer for work.","exj":"仕事でコンピュータを使います。"}]},
+"very":{"w":"very","p":"/ˈveri/","m":[{"pos":"副詞","ja":"とても、非常に","ex":"Thank you very much!","exj":"どうもありがとうございます！"}]},
+"video":{"w":"video","p":"/ˈvɪdioʊ/","m":[{"pos":"名詞","ja":"動画、ビデオ","ex":"I watch videos online.","exj":"オンラインで動画を見ます。"}]},
+"voice":{"w":"voice","p":"/vɔɪs/","m":[{"pos":"名詞","ja":"声","ex":"She has a beautiful voice.","exj":"彼女は美しい声をしています。"}]},
+"walk":{"w":"walk","p":"/wɔːk/","m":[{"pos":"動詞","ja":"歩く","ex":"I walk to school every day.","exj":"毎日学校まで歩きます。"},{"pos":"名詞","ja":"散歩","ex":"Let's go for a walk.","exj":"散歩しに行こう。"}]},
+"want":{"w":"want","p":"/wɒnt/","m":[{"pos":"動詞","ja":"欲しい、したい","ex":"I want to be a game developer.","exj":"ゲーム開発者になりたいです。"}]},
+"watch":{"w":"watch","p":"/wɒtʃ/","m":[{"pos":"動詞","ja":"見る、観察する","ex":"I watch anime every day.","exj":"毎日アニメを見ます。"},{"pos":"名詞","ja":"腕時計","ex":"My watch stopped.","exj":"時計が止まりました。"}]},
+"water":{"w":"water","p":"/ˈwɔːtər/","m":[{"pos":"名詞","ja":"水","ex":"Drink more water.","exj":"もっと水を飲もう。"}]},
+"weak":{"w":"weak","p":"/wiːk/","m":[{"pos":"形容詞","ja":"弱い","ex":"I feel a bit weak today.","exj":"今日は少し体が弱い感じがします。"}]},
+"weather":{"w":"weather","p":"/ˈweðər/","m":[{"pos":"名詞","ja":"天気、天候","ex":"How is the weather today?","exj":"今日の天気はどうですか？"}]},
+"week":{"w":"week","p":"/wiːk/","m":[{"pos":"名詞","ja":"週","ex":"I practice three times a week.","exj":"週3回練習します。"}]},
+"white":{"w":"white","p":"/waɪt/","m":[{"pos":"形容詞","ja":"白い","ex":"The snow is white.","exj":"雪は白いです。"}]},
+"win":{"w":"win","p":"/wɪn/","m":[{"pos":"動詞","ja":"勝つ","ex":"I want to win the contest.","exj":"コンテストで勝ちたいです。"}]},
+"wind":{"w":"wind","p":"/wɪnd/","m":[{"pos":"名詞","ja":"風","ex":"The wind is strong today.","exj":"今日は風が強いです。"}]},
+"winter":{"w":"winter","p":"/ˈwɪntər/","m":[{"pos":"名詞","ja":"冬","ex":"I love winter because of snow.","exj":"雪があるので冬が好きです。"}]},
+"work":{"w":"work","p":"/wɜːrk/","m":[{"pos":"動詞","ja":"働く、機能する","ex":"This app works great!","exj":"このアプリはよく動作します！"},{"pos":"名詞","ja":"仕事、作品","ex":"I'm proud of my work.","exj":"自分の作品が誇りです。"}]},
+"world":{"w":"world","p":"/wɜːrld/","m":[{"pos":"名詞","ja":"世界","ex":"I want to change the world.","exj":"世界を変えたいです。"}]},
+"write":{"w":"write","p":"/raɪt/","m":[{"pos":"動詞","ja":"書く","ex":"Write your name here.","exj":"ここに名前を書いてください。"}]},
+"year":{"w":"year","p":"/jɪər/","m":[{"pos":"名詞","ja":"年、〜年間","ex":"This year I started coding.","exj":"今年コーディングを始めました。"}]},
+"yellow":{"w":"yellow","p":"/ˈjeloʊ/","m":[{"pos":"形容詞","ja":"黄色の","ex":"The sun looks yellow.","exj":"太陽は黄色く見えます。"}]},
+"young":{"w":"young","p":"/jʌŋ/","m":[{"pos":"形容詞","ja":"若い","ex":"She is young but talented.","exj":"彼女は若いけど才能があります。"}]},
+};
+
+const WORDS = Object.keys(DICT);
+
+// ===== ストレージ =====
+let wordbook = JSON.parse(localStorage.getItem('echodict3_wb') || '[]');
+let currentResult = null;
+let quizIndex=0, quizScore=0, quizWords=[];
+function save(){ localStorage.setItem('echodict3_wb', JSON.stringify(wordbook)); }
+
+// ===== ページ切替 =====
+function showPage(name, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  btn.classList.add('active');
+  if(name==='wordbook') renderWordbook();
+  if(name==='quiz') resetQuizView();
+}
+
+// ===== サジェスト =====
+document.getElementById('searchInput').addEventListener('input', function(){
+  const v = this.value.trim().toLowerCase();
+  const sl = document.getElementById('suggestList');
+  if(!v){ sl.style.display='none'; return; }
+  const hits = WORDS.filter(w=>w.startsWith(v)).slice(0,6);
+  if(!hits.length){ sl.style.display='none'; return; }
+  sl.innerHTML = hits.map(w=>`<div class="suggest-item" onclick="pickSuggest('${w}')">${w} <span>${DICT[w].m[0].ja}</span></div>`).join('');
+  sl.style.display='block';
+});
+
+function pickSuggest(w){
+  document.getElementById('searchInput').value = w;
+  document.getElementById('suggestList').style.display='none';
+  displayResult(DICT[w]);
+}
+
+document.getElementById('searchInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ document.getElementById('suggestList').style.display='none'; searchWord(); }
+});
+
+// ===== 検索 =====
+function searchWord(){
+  const raw = document.getElementById('searchInput').value.trim().toLowerCase();
+  if(!raw) return;
+  document.getElementById('suggestList').style.display='none';
+
+  // 完全一致
+  if(DICT[raw]){ displayResult(DICT[raw]); return; }
+
+  // 前方一致で1件だけヒット
+  const hits = WORDS.filter(w=>w.startsWith(raw));
+  if(hits.length===1){ displayResult(DICT[hits[0]]); return; }
+
+  // 部分一致
+  const partial = WORDS.filter(w=>w.includes(raw));
+  if(partial.length===1){ displayResult(DICT[partial[0]]); return; }
+
+  // 見つからない
+  document.getElementById('resultCard').classList.remove('show');
+  const nf = document.getElementById('notFound');
+  nf.innerHTML = `「${raw}」は見つかりませんでした。<br><span style="font-size:0.82rem">収録単語数: ${WORDS.length}語</span>`;
+  nf.classList.add('show');
+}
+
+function displayResult(data){
+  currentResult = data;
+  document.getElementById('notFound').classList.remove('show');
+  document.getElementById('resWord').textContent = data.w;
+  document.getElementById('resPhonetic').textContent = data.p || '';
+
+  const div = document.getElementById('resMeanings');
+  div.innerHTML = '<div class="sec-label">意味・例文</div>';
+  data.m.forEach(m=>{
+    const b=document.createElement('div');
+    b.className='meaning-block';
+    b.innerHTML=`<div class="pos-badge">${m.pos}</div>
+      <div style="font-weight:600;margin-bottom:4px;">${m.ja}</div>
+      ${m.ex?`<div class="example-en">${m.ex}</div>`:''}
+      ${m.exj?`<div class="example-ja">${m.exj}</div>`:''}`;
+    div.appendChild(b);
+  });
+
+  const sb=document.getElementById('saveBtn');
+  const already=wordbook.some(w=>w.w===data.w);
+  sb.textContent=already?'✓ 単語帳に追加済み':'＋ 単語帳に追加';
+  sb.className='save-btn'+(already?' saved':'');
+  document.getElementById('resultCard').classList.add('show');
+}
+
+function speakWord(){
+  const w=document.getElementById('resWord').textContent;
+  if(!w) return;
+  const u=new SpeechSynthesisUtterance(w);
+  u.lang='en-US'; speechSynthesis.speak(u);
+}
+
+function saveWord(){
+  if(!currentResult) return;
+  if(wordbook.some(w=>w.w===currentResult.w)){showToast('すでに追加済みです');return;}
+  wordbook.push(currentResult); save();
+  document.getElementById('saveBtn').textContent='✓ 単語帳に追加済み';
+  document.getElementById('saveBtn').className='save-btn saved';
+  showToast('✅ 単語帳に追加しました！');
+}
+
+// ===== 単語帳 =====
+function renderWordbook(){
+  const div=document.getElementById('wordbookContent');
+  document.getElementById('wbCount').textContent=`${wordbook.length}語`;
+  if(!wordbook.length){
+    div.innerHTML='<div class="wordbook-empty"><div style="font-size:2rem;margin-bottom:10px;">📭</div>単語帳はまだ空です。<br>検索して単語を追加しよう！</div>';
+    return;
+  }
+  div.innerHTML='<div class="word-list">'+wordbook.map((w,i)=>`
+    <div class="word-item">
+      <div class="word-item-main">
+        <div class="word-item-en">${w.w}</div>
+        <div class="word-item-ja">${w.m[0]?.ja||''}</div>
+      </div>
+      <div class="word-item-actions">
+        <button class="icon-btn" onclick="speakB('${w.w}')">🔊</button>
+        <button class="icon-btn danger" onclick="delWord(${i})">🗑️</button>
+      </div>
+    </div>`).join('')+'</div>';
+}
+
+function speakB(word){const u=new SpeechSynthesisUtterance(word);u.lang='en-US';speechSynthesis.speak(u);}
+function delWord(i){wordbook.splice(i,1);save();renderWordbook();showToast('🗑️ 削除しました');}
+
+// ===== クイズ =====
+function resetQuizView(){
+  document.getElementById('quizStart').style.display='block';
+  document.getElementById('quizCard').classList.remove('show');
+  document.getElementById('quizResult').classList.remove('show');
+}
+
+function startQuiz(){
+  if(wordbook.length<2){showToast('単語帳に2つ以上の単語が必要です');return;}
+  quizWords=[...wordbook].sort(()=>Math.random()-0.5).slice(0,Math.min(10,wordbook.length));
+  quizIndex=0;quizScore=0;
+  document.getElementById('quizStart').style.display='none';
+  document.getElementById('quizResult').classList.remove('show');
+  document.getElementById('quizCard').classList.add('show');
+  showQ();
+}
+
+function showQ(){
+  if(quizIndex>=quizWords.length){endQuiz();return;}
+  const cur=quizWords[quizIndex];
+  const total=quizWords.length;
+  document.getElementById('quizProgressText').textContent=`${quizIndex+1} / ${total}`;
+  document.getElementById('quizScoreText').textContent=`正解: ${quizScore}`;
+  document.getElementById('progressFill').style.width=`${(quizIndex/total)*100}%`;
+  document.getElementById('quizQuestion').textContent=cur.w;
+
+  const correct=cur.m[0]?.ja||'???';
+  let choices=[correct];
+  const pool=[...wordbook].filter(w=>w.w!==cur.w).sort(()=>Math.random()-0.5);
+  for(const p of pool){if(choices.length>=4)break;choices.push(p.m[0]?.ja||'???');}
+  // 4択に足りない場合は辞書から補充
+  const dictPool=WORDS.filter(w=>!wordbook.some(wb=>wb.w===w)&&w!==cur.w).sort(()=>Math.random()-0.5);
+  for(const d of dictPool){if(choices.length>=4)break;choices.push(DICT[d].m[0].ja);}
+  choices=choices.sort(()=>Math.random()-0.5);
+
+  const div=document.getElementById('quizChoices');
+  div.innerHTML='';
+  choices.forEach(c=>{
+    const btn=document.createElement('button');
+    btn.className='choice-btn';btn.textContent=c;
+    btn.onclick=()=>ansQ(btn,c,correct);
+    div.appendChild(btn);
+  });
+}
+
+function ansQ(btn,chosen,correct){
+  document.querySelectorAll('.choice-btn').forEach(b=>{
+    b.disabled=true;
+    if(b.textContent===correct)b.classList.add('correct');
+  });
+  if(chosen===correct){btn.classList.add('correct');quizScore++;}
+  else btn.classList.add('wrong');
+  setTimeout(()=>{quizIndex++;showQ();},900);
+}
+
+function endQuiz(){
+  document.getElementById('quizCard').classList.remove('show');
+  const r=document.getElementById('quizResult');r.classList.add('show');
+  document.getElementById('finalScore').textContent=`${quizScore}/${quizWords.length}`;
+  const pct=quizScore/quizWords.length;
+  document.getElementById('finalMsg').textContent=
+    pct===1?'🎉 パーフェクト！':pct>=0.7?'👏 よくできました！':pct>=0.4?'📚 もう少し復習しよう':'💪 引き続き頑張ろう！';
+}
+
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;
+  t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);
+}
+</script>
+</body>
+</html>
