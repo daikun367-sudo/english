@@ -204,10 +204,9 @@ async function loadEJDict() {
 
 // EJDictの意味文字列をパース → 表示用オブジェクトに変換
 function parseEJDictMeaning(word, raw) {
-  // 品詞タグを抽出
   const meanings = [];
-  // セミコロンで分割して複数の意味に
-  const parts = raw.split(';').map(s => s.trim()).filter(Boolean);
+  // 「/」で区切って最大3つまで
+  const parts = raw.split('/').map(s => s.trim()).filter(Boolean).slice(0, 3);
   for (const part of parts) {
     meanings.push({ pos: '―', ja: part, ex: '', exj: '' });
   }
@@ -411,10 +410,18 @@ function showQ() {
   document.getElementById('progressFill').style.width = `${(quizIndex / total) * 100}%`;
   document.getElementById('quizQuestion').textContent = cur.word;
 
-  const correct = cur.meanings?.[0]?.ja || '???';
+  // 意味を短く切る（20文字まで）
+  function trimMeaning(ja) {
+    if (!ja) return '???';
+    // スラッシュ・カンマ・《》などの前で切る
+    const short = ja.split(/[/,;《〈]/)[0].trim();
+    return short.length > 20 ? short.slice(0, 20) + '…' : short;
+  }
+
+  const correct = trimMeaning(cur.meanings?.[0]?.ja);
   let choices = [correct];
   const pool = [...wordbook].filter(w => w.word !== cur.word).sort(() => Math.random() - 0.5);
-  for (const p of pool) { if (choices.length >= 4) break; choices.push(p.meanings?.[0]?.ja || '???'); }
+  for (const p of pool) { if (choices.length >= 4) break; choices.push(trimMeaning(p.meanings?.[0]?.ja)); }
   while (choices.length < 4) choices.push(['意味なし', '不明', '―', '該当なし'][choices.length - 1]);
   choices = choices.sort(() => Math.random() - 0.5);
 
