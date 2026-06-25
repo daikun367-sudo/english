@@ -126,10 +126,6 @@ main{flex:1;max-width:720px;width:100%;margin:0 auto;padding:24px 16px;}
       <button class="search-btn" id="searchBtn" onclick="searchWord()">調べる</button>
     </div>
     <div class="suggest-list" id="suggestList"></div>
-    <div class="loading" id="loadingDiv">
-      <div class="spinner"></div>
-      <div id="loadingMsg">調べています...</div>
-    </div>
     <div class="not-found" id="notFound"></div>
     <div class="result-card" id="resultCard">
       <div class="result-word" id="resWord"></div>
@@ -180,10 +176,6 @@ main{flex:1;max-width:720px;width:100%;margin:0 auto;padding:24px 16px;}
 <div class="toast" id="toast"></div>
 
 <script>
-// ===== 設定 =====
-// Cloudflare WorkersのURLをデプロイ後にここに入れる
-const WORKER_URL = 'https://YOUR_WORKER.YOUR_NAME.workers.dev';
-
 // EJDictのTSVファイルのURL（同じリポジトリに置く）
 const EJDICT_URL = './ejdict.tsv';
 
@@ -249,17 +241,6 @@ function ejdictSuggest(query, limit = 8) {
   return results;
 }
 
-// ===== Claudeにフォールバック =====
-async function fetchFromClaude(word) {
-  const res = await fetch(WORKER_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ word })
-  });
-  if (!res.ok) throw new Error('Worker error');
-  return await res.json();
-  // { word, phonetic, source:'ai', meanings:[{pos,ja,ex,exj}] }
-}
 
 // ===== 状態 =====
 let wordbook = JSON.parse(localStorage.getItem('echodict_wb4') || '[]');
@@ -316,8 +297,6 @@ function searchWord() {
 
 async function doSearch(word) {
   const btn = document.getElementById('searchBtn');
-  const loading = document.getElementById('loadingDiv');
-  const loadingMsg = document.getElementById('loadingMsg');
   const card = document.getElementById('resultCard');
   const nf = document.getElementById('notFound');
 
@@ -325,27 +304,14 @@ async function doSearch(word) {
   card.classList.remove('show');
   nf.classList.remove('show');
 
-  // まずEJDictで検索
   const ej = ejdictSearch(word);
   if (ej) {
-    btn.disabled = false;
     displayResult(parseEJDictMeaning(ej.word, ej.meaning));
-    return;
-  }
-
-  // EJDictにない→Claudeにフォールバック
-  loading.style.display = 'block';
-  loadingMsg.textContent = 'EJDictにないのでAIで調べています...';
-
-  try {
-    const result = await fetchFromClaude(word);
-    displayResult(result);
-  } catch (e) {
+  } else {
     nf.innerHTML = `「${word}」は見つかりませんでした。`;
     nf.classList.add('show');
   }
 
-  loading.style.display = 'none';
   btn.disabled = false;
 }
 
@@ -356,13 +322,8 @@ function displayResult(data) {
   document.getElementById('resPhonetic').textContent = data.phonetic || '';
 
   const badge = document.getElementById('sourceBadge');
-  if (data.source === 'ejdict') {
-    badge.textContent = '📚 EJDict';
-    badge.className = 'source-badge source-ejdict';
-  } else {
-    badge.textContent = '🤖 AI補完';
-    badge.className = 'source-badge source-ai';
-  }
+  badge.textContent = '📚 EJDict';
+  badge.className = 'source-badge source-ejdict';
 
   const div = document.getElementById('resMeanings');
   div.innerHTML = '<div class="sec-label">意味</div>';
