@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EchoDict — 英語辞書</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--accent:#7c6fec;--accent2:#a98cf5;--text:#e8eaf0;--text2:#9096b0;--border:#2a2f47;--green:#4ade80;--red:#f87171;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Space Grotesk','Noto Sans JP',sans-serif;min-height:100vh;display:flex;flex-direction:column;}
+header{padding:14px 20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--bg);z-index:100;}
+.logo{font-size:1.3rem;font-weight:700;letter-spacing:-0.04em;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+nav{margin-left:auto;display:flex;gap:4px;}
+.nav-btn{padding:6px 12px;border:none;border-radius:8px;font-family:inherit;font-size:0.82rem;font-weight:500;cursor:pointer;background:transparent;color:var(--text2);transition:all 0.15s;}
+.nav-btn:hover{background:var(--surface2);color:var(--text);}
+.nav-btn.active{background:var(--accent);color:#fff;}
+main{flex:1;max-width:720px;width:100%;margin:0 auto;padding:24px 16px;}
+.page{display:none;}.page.active{display:block;}
+
+/* 検索 */
+.search-wrap{display:flex;gap:8px;margin-bottom:12px;}
+.search-input{flex:1;padding:13px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:12px;color:var(--text);font-family:inherit;font-size:1rem;outline:none;transition:border-color 0.15s;}
+.search-input:focus{border-color:var(--accent);}
+.search-input::placeholder{color:var(--text2);}
+.search-btn{padding:13px 18px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:0.9rem;font-weight:600;cursor:pointer;white-space:nowrap;}
+.search-btn:hover{opacity:0.88;}
+.search-btn:disabled{opacity:0.4;cursor:not-allowed;}
+
+/* サジェスト */
+.suggest-list{background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;display:none;max-height:220px;overflow-y:auto;}
+.suggest-item{padding:10px 16px;cursor:pointer;font-size:0.92rem;border-bottom:1px solid var(--border);transition:background 0.1s;display:flex;align-items:center;gap:8px;}
+.suggest-item:last-child{border-bottom:none;}
+.suggest-item:hover{background:var(--surface2);}
+.suggest-item .sug-word{font-weight:600;}
+.suggest-item .sug-ja{color:var(--text2);font-size:0.8rem;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ソースバッジ */
+.source-badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:0.7rem;font-weight:600;margin-bottom:12px;}
+.source-ejdict{background:#4ade8020;color:var(--green);}
+.source-ai{background:#7c6fec20;color:var(--accent2);}
+
+/* 結果カード */
+.result-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;display:none;}
+.result-card.show{display:block;}
+.result-word{font-size:1.9rem;font-weight:700;letter-spacing:-0.03em;margin-bottom:4px;}
+.result-phonetic{color:var(--text2);font-size:0.88rem;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.speak-btn{background:var(--surface2);border:none;border-radius:8px;padding:4px 10px;color:var(--accent2);cursor:pointer;font-size:0.78rem;font-family:inherit;}
+.speak-btn:hover{background:var(--border);}
+.sec-label{font-size:0.7rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--accent2);margin:14px 0 7px;}
+.meaning-block{padding:11px 13px;background:var(--surface2);border-radius:10px;margin-bottom:7px;line-height:1.6;font-size:0.92rem;}
+.pos-badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:0.7rem;font-weight:600;background:#7c6fec22;color:var(--accent2);margin-bottom:5px;}
+.example-en{color:var(--text2);font-size:0.83rem;font-style:italic;margin-top:4px;}
+.example-ja{color:var(--text2);font-size:0.8rem;margin-top:2px;}
+.save-btn{margin-top:16px;width:100%;padding:10px;background:transparent;border:1.5px solid var(--accent);border-radius:10px;color:var(--accent2);font-family:inherit;font-size:0.88rem;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.save-btn:hover{background:var(--accent);color:#fff;}
+.save-btn.saved{background:#4ade8022;border-color:var(--green);color:var(--green);}
+
+/* ローディング */
+.loading{text-align:center;padding:28px;color:var(--text2);display:none;}
+.spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* エラー */
+.not-found{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;text-align:center;color:var(--text2);display:none;}
+.not-found.show{display:block;}
+
+/* 単語帳 */
+.wordbook-empty{text-align:center;padding:50px 20px;color:var(--text2);}
+.word-list{display:flex;flex-direction:column;gap:8px;}
+.word-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:10px;}
+.word-item-main{flex:1;}
+.word-item-en{font-size:1rem;font-weight:600;}
+.word-item-ja{font-size:0.82rem;color:var(--text2);margin-top:2px;}
+.word-item-actions{display:flex;gap:6px;}
+.icon-btn{background:var(--surface2);border:none;border-radius:8px;padding:6px 9px;cursor:pointer;font-size:0.88rem;transition:background 0.12s;}
+.icon-btn:hover{background:var(--border);}
+.icon-btn.danger:hover{background:#f8717122;}
+
+/* クイズ */
+.quiz-start{text-align:center;padding:36px 20px;}
+.quiz-start h2{font-size:1.4rem;margin-bottom:8px;}
+.quiz-start p{color:var(--text2);margin-bottom:24px;}
+.start-btn{padding:13px 32px;background:var(--accent);border:none;border-radius:12px;color:#fff;font-family:inherit;font-size:0.95rem;font-weight:700;cursor:pointer;}
+.start-btn:hover{opacity:0.88;}
+.quiz-card{display:none;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;}
+.quiz-card.show{display:block;}
+.quiz-progress{font-size:0.78rem;color:var(--text2);margin-bottom:14px;display:flex;justify-content:space-between;}
+.progress-bar{height:4px;background:var(--border);border-radius:2px;margin-bottom:20px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:2px;transition:width 0.3s;}
+.quiz-question{font-size:1.55rem;font-weight:700;text-align:center;margin-bottom:6px;}
+.quiz-hint{text-align:center;color:var(--text2);font-size:0.82rem;margin-bottom:22px;}
+.quiz-choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.choice-btn{padding:13px 8px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;color:var(--text);font-family:inherit;font-size:0.87rem;cursor:pointer;transition:all 0.12s;line-height:1.4;}
+.choice-btn:hover:not(:disabled){border-color:var(--accent);background:var(--surface);}
+.choice-btn.correct{border-color:var(--green);background:#4ade8018;color:var(--green);}
+.choice-btn.wrong{border-color:var(--red);background:#f8717118;color:var(--red);}
+.choice-btn:disabled{cursor:default;}
+.quiz-result{display:none;text-align:center;padding:28px;}
+.quiz-result.show{display:block;}
+.score-circle{width:100px;height:100px;border-radius:50%;border:4px solid var(--accent);display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0 auto 18px;}
+.score-num{font-size:1.9rem;font-weight:700;}
+.score-label{font-size:0.72rem;color:var(--text2);}
+.retry-btn{margin-top:18px;padding:11px 28px;background:var(--accent);border:none;border-radius:10px;color:#fff;font-family:inherit;font-size:0.92rem;font-weight:600;cursor:pointer;}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);border:1px solid var(--border);padding:9px 18px;border-radius:10px;font-size:0.88rem;transition:transform 0.25s;z-index:200;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.count-badge{font-size:0.78rem;color:var(--text2);margin-bottom:16px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">EchoDict</div>
+  <nav>
+    <button class="nav-btn active" onclick="showPage('search',this)">🔍 検索</button>
+    <button class="nav-btn" onclick="showPage('wordbook',this)">📖 単語帳</button>
+    <button class="nav-btn" onclick="showPage('quiz',this)">🎯 クイズ</button>
+  </nav>
+</header>
+<main>
+  <!-- 検索ページ -->
+  <div class="page active" id="page-search">
+    <div class="search-wrap">
+      <input class="search-input" id="searchInput" type="text" placeholder="英単語を入力... (例: serendipity)"
+        autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <button class="search-btn" id="searchBtn" onclick="searchWord()">調べる</button>
+    </div>
+    <div class="suggest-list" id="suggestList"></div>
+    <div class="loading" id="loadingDiv">
+      <div class="spinner"></div>
+      <div id="loadingMsg">調べています...</div>
+    </div>
+    <div class="not-found" id="notFound"></div>
+    <div class="result-card" id="resultCard">
+      <div class="result-word" id="resWord"></div>
+      <div class="result-phonetic">
+        <span id="resPhonetic"></span>
+        <button class="speak-btn" onclick="speakWord()">🔊 発音</button>
+        <span class="source-badge" id="sourceBadge"></span>
+      </div>
+      <div id="resMeanings"></div>
+      <button class="save-btn" id="saveBtn" onclick="saveWord()">＋ 単語帳に追加</button>
+    </div>
+  </div>
+
+  <!-- 単語帳 -->
+  <div class="page" id="page-wordbook">
+    <h2 style="font-size:1.2rem;margin-bottom:6px;">📖 単語帳</h2>
+    <div class="count-badge" id="wbCount"></div>
+    <div id="wordbookContent"></div>
+  </div>
+
+  <!-- クイズ -->
+  <div class="page" id="page-quiz">
+    <div class="quiz-start" id="quizStart">
+      <h2>🎯 暗記クイズ</h2>
+      <p>単語帳の単語で4択クイズ！</p>
+      <button class="start-btn" onclick="startQuiz()">スタート</button>
+    </div>
+    <div class="quiz-card" id="quizCard">
+      <div class="quiz-progress">
+        <span id="quizProgressText"></span>
+        <span id="quizScoreText">正解: 0</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="quiz-question" id="quizQuestion"></div>
+      <div class="quiz-hint">この単語の意味は？</div>
+      <div class="quiz-choices" id="quizChoices"></div>
+    </div>
+    <div class="quiz-result" id="quizResult">
+      <div class="score-circle">
+        <div class="score-num" id="finalScore"></div>
+        <div class="score-label">正解</div>
+      </div>
+      <div id="finalMsg" style="color:var(--text2);margin-bottom:8px;"></div>
+      <button class="retry-btn" onclick="startQuiz()">もう一度</button>
+    </div>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== 設定 =====
+// Cloudflare WorkersのURLをデプロイ後にここに入れる
+const WORKER_URL = 'https://YOUR_WORKER.YOUR_NAME.workers.dev';
+
+// EJDictのTSVファイルのURL（同じリポジトリに置く）
+const EJDICT_URL = './ejdict.tsv';
+
+// ===== EJDict読み込み =====
+let ejdict = null; // { word -> 意味文字列 }
+
+async function loadEJDict() {
+  try {
+    const res = await fetch(EJDICT_URL);
+    const text = await res.text();
+    ejdict = {};
+    for (const line of text.split('\n')) {
+      const tab = line.indexOf('\t');
+      if (tab === -1) continue;
+      const keys = line.slice(0, tab).split(',').map(s => s.trim().toLowerCase());
+      const meaning = line.slice(tab + 1).trim();
+      for (const k of keys) {
+        if (k) ejdict[k] = meaning;
+      }
+    }
+    console.log(`EJDict loaded: ${Object.keys(ejdict).length} words`);
+  } catch(e) {
+    console.warn('EJDict load failed:', e);
+  }
+}
+
+// EJDictの意味文字列をパース → 表示用オブジェクトに変換
+function parseEJDictMeaning(word, raw) {
+  // 品詞タグを抽出
+  const meanings = [];
+  // セミコロンで分割して複数の意味に
+  const parts = raw.split(';').map(s => s.trim()).filter(Boolean);
+  for (const part of parts) {
+    meanings.push({ pos: '―', ja: part, ex: '', exj: '' });
+  }
+  return {
+    word,
+    phonetic: '',
+    source: 'ejdict',
+    meanings
+  };
+}
+
+// EJDictで検索（前方一致サジェスト用）
+function ejdictSearch(query) {
+  if (!ejdict) return null;
+  const q = query.toLowerCase();
+  // 完全一致優先
+  if (ejdict[q]) return { word: q, meaning: ejdict[q] };
+  return null;
+}
+
+function ejdictSuggest(query, limit = 8) {
+  if (!ejdict) return [];
+  const q = query.toLowerCase();
+  const results = [];
+  for (const word of Object.keys(ejdict)) {
+    if (word.startsWith(q)) {
+      results.push({ word, meaning: ejdict[word] });
+      if (results.length >= limit) break;
+    }
+  }
+  return results;
+}
+
+// ===== Claudeにフォールバック =====
+async function fetchFromClaude(word) {
+  const res = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ word })
+  });
+  if (!res.ok) throw new Error('Worker error');
+  return await res.json();
+  // { word, phonetic, source:'ai', meanings:[{pos,ja,ex,exj}] }
+}
+
+// ===== 状態 =====
+let wordbook = JSON.parse(localStorage.getItem('echodict_wb4') || '[]');
+let currentResult = null;
+let quizIndex = 0, quizScore = 0, quizWords = [];
+function saveWB() { localStorage.setItem('echodict_wb4', JSON.stringify(wordbook)); }
+
+// ===== ページ =====
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  btn.classList.add('active');
+  if (name === 'wordbook') renderWordbook();
+  if (name === 'quiz') resetQuizView();
+}
+
+// ===== サジェスト =====
+document.getElementById('searchInput').addEventListener('input', function () {
+  const v = this.value.trim();
+  const sl = document.getElementById('suggestList');
+  if (!v || !ejdict) { sl.style.display = 'none'; return; }
+  const hits = ejdictSuggest(v);
+  if (!hits.length) { sl.style.display = 'none'; return; }
+  sl.innerHTML = hits.map(h =>
+    `<div class="suggest-item" onclick="pickSuggest('${h.word.replace(/'/g,"\\'")}')">
+      <span class="sug-word">${h.word}</span>
+      <span class="sug-ja">${h.meaning.split(';')[0].slice(0, 40)}</span>
+    </div>`
+  ).join('');
+  sl.style.display = 'block';
+});
+
+function pickSuggest(w) {
+  document.getElementById('searchInput').value = w;
+  document.getElementById('suggestList').style.display = 'none';
+  doSearch(w);
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    document.getElementById('suggestList').style.display = 'none';
+    searchWord();
+  }
+});
+
+// ===== 検索メイン =====
+function searchWord() {
+  const raw = document.getElementById('searchInput').value.trim();
+  if (!raw) return;
+  document.getElementById('suggestList').style.display = 'none';
+  doSearch(raw);
+}
+
+async function doSearch(word) {
+  const btn = document.getElementById('searchBtn');
+  const loading = document.getElementById('loadingDiv');
+  const loadingMsg = document.getElementById('loadingMsg');
+  const card = document.getElementById('resultCard');
+  const nf = document.getElementById('notFound');
+
+  btn.disabled = true;
+  card.classList.remove('show');
+  nf.classList.remove('show');
+
+  // まずEJDictで検索
+  const ej = ejdictSearch(word);
+  if (ej) {
+    btn.disabled = false;
+    displayResult(parseEJDictMeaning(ej.word, ej.meaning));
+    return;
+  }
+
+  // EJDictにない→Claudeにフォールバック
+  loading.style.display = 'block';
+  loadingMsg.textContent = 'EJDictにないのでAIで調べています...';
+
+  try {
+    const result = await fetchFromClaude(word);
+    displayResult(result);
+  } catch (e) {
+    nf.innerHTML = `「${word}」は見つかりませんでした。`;
+    nf.classList.add('show');
+  }
+
+  loading.style.display = 'none';
+  btn.disabled = false;
+}
+
+function displayResult(data) {
+  currentResult = data;
+  document.getElementById('notFound').classList.remove('show');
+  document.getElementById('resWord').textContent = data.word;
+  document.getElementById('resPhonetic').textContent = data.phonetic || '';
+
+  const badge = document.getElementById('sourceBadge');
+  if (data.source === 'ejdict') {
+    badge.textContent = '📚 EJDict';
+    badge.className = 'source-badge source-ejdict';
+  } else {
+    badge.textContent = '🤖 AI補完';
+    badge.className = 'source-badge source-ai';
+  }
+
+  const div = document.getElementById('resMeanings');
+  div.innerHTML = '<div class="sec-label">意味</div>';
+  (data.meanings || []).forEach(m => {
+    const b = document.createElement('div');
+    b.className = 'meaning-block';
+    b.innerHTML = `
+      ${m.pos && m.pos !== '―' ? `<div class="pos-badge">${m.pos}</div>` : ''}
+      <div style="font-weight:600;margin-bottom:4px;">${m.ja}</div>
+      ${m.ex ? `<div class="example-en">${m.ex}</div>` : ''}
+      ${m.exj ? `<div class="example-ja">${m.exj}</div>` : ''}`;
+    div.appendChild(b);
+  });
+
+  const sb = document.getElementById('saveBtn');
+  const already = wordbook.some(w => w.word === data.word);
+  sb.textContent = already ? '✓ 単語帳に追加済み' : '＋ 単語帳に追加';
+  sb.className = 'save-btn' + (already ? ' saved' : '');
+  document.getElementById('resultCard').classList.add('show');
+}
+
+function speakWord() {
+  const w = document.getElementById('resWord').textContent;
+  if (!w) return;
+  const u = new SpeechSynthesisUtterance(w);
+  u.lang = 'en-US'; speechSynthesis.speak(u);
+}
+
+function saveWord() {
+  if (!currentResult) return;
+  if (wordbook.some(w => w.word === currentResult.word)) { showToast('すでに追加済みです'); return; }
+  wordbook.push(currentResult); saveWB();
+  document.getElementById('saveBtn').textContent = '✓ 単語帳に追加済み';
+  document.getElementById('saveBtn').className = 'save-btn saved';
+  showToast('✅ 単語帳に追加しました！');
+}
+
+// ===== 単語帳 =====
+function renderWordbook() {
+  const div = document.getElementById('wordbookContent');
+  document.getElementById('wbCount').textContent = `${wordbook.length}語`;
+  if (!wordbook.length) {
+    div.innerHTML = '<div class="wordbook-empty"><div style="font-size:2rem;margin-bottom:10px;">📭</div>単語帳はまだ空です。</div>';
+    return;
+  }
+  div.innerHTML = '<div class="word-list">' + wordbook.map((w, i) => `
+    <div class="word-item">
+      <div class="word-item-main">
+        <div class="word-item-en">${w.word}</div>
+        <div class="word-item-ja">${w.meanings?.[0]?.ja || ''}</div>
+      </div>
+      <div class="word-item-actions">
+        <button class="icon-btn" onclick="speakB('${w.word.replace(/'/g,"\\'")}')">🔊</button>
+        <button class="icon-btn danger" onclick="delWord(${i})">🗑️</button>
+      </div>
+    </div>`).join('') + '</div>';
+}
+
+function speakB(word) { const u = new SpeechSynthesisUtterance(word); u.lang = 'en-US'; speechSynthesis.speak(u); }
+function delWord(i) { wordbook.splice(i, 1); saveWB(); renderWordbook(); showToast('🗑️ 削除しました'); }
+
+// ===== クイズ =====
+function resetQuizView() {
+  document.getElementById('quizStart').style.display = 'block';
+  document.getElementById('quizCard').classList.remove('show');
+  document.getElementById('quizResult').classList.remove('show');
+}
+
+function startQuiz() {
+  if (wordbook.length < 2) { showToast('単語帳に2つ以上の単語が必要です'); return; }
+  quizWords = [...wordbook].sort(() => Math.random() - 0.5).slice(0, Math.min(10, wordbook.length));
+  quizIndex = 0; quizScore = 0;
+  document.getElementById('quizStart').style.display = 'none';
+  document.getElementById('quizResult').classList.remove('show');
+  document.getElementById('quizCard').classList.add('show');
+  showQ();
+}
+
+function showQ() {
+  if (quizIndex >= quizWords.length) { endQuiz(); return; }
+  const cur = quizWords[quizIndex];
+  const total = quizWords.length;
+  document.getElementById('quizProgressText').textContent = `${quizIndex + 1} / ${total}`;
+  document.getElementById('quizScoreText').textContent = `正解: ${quizScore}`;
+  document.getElementById('progressFill').style.width = `${(quizIndex / total) * 100}%`;
+  document.getElementById('quizQuestion').textContent = cur.word;
+
+  const correct = cur.meanings?.[0]?.ja || '???';
+  let choices = [correct];
+  const pool = [...wordbook].filter(w => w.word !== cur.word).sort(() => Math.random() - 0.5);
+  for (const p of pool) { if (choices.length >= 4) break; choices.push(p.meanings?.[0]?.ja || '???'); }
+  while (choices.length < 4) choices.push(['意味なし', '不明', '―', '該当なし'][choices.length - 1]);
+  choices = choices.sort(() => Math.random() - 0.5);
+
+  const div = document.getElementById('quizChoices');
+  div.innerHTML = '';
+  choices.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn'; btn.textContent = c;
+    btn.onclick = () => ansQ(btn, c, correct);
+    div.appendChild(btn);
+  });
+}
+
+function ansQ(btn, chosen, correct) {
+  document.querySelectorAll('.choice-btn').forEach(b => {
+    b.disabled = true;
+    if (b.textContent === correct) b.classList.add('correct');
+  });
+  if (chosen === correct) { btn.classList.add('correct'); quizScore++; }
+  else btn.classList.add('wrong');
+  setTimeout(() => { quizIndex++; showQ(); }, 900);
+}
+
+function endQuiz() {
+  document.getElementById('quizCard').classList.remove('show');
+  const r = document.getElementById('quizResult'); r.classList.add('show');
+  document.getElementById('finalScore').textContent = `${quizScore}/${quizWords.length}`;
+  const pct = quizScore / quizWords.length;
+  document.getElementById('finalMsg').textContent =
+    pct === 1 ? '🎉 パーフェクト！' : pct >= 0.7 ? '👏 よくできました！' : pct >= 0.4 ? '📚 もう少し復習しよう' : '💪 引き続き頑張ろう！';
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// ===== 起動 =====
+loadEJDict();
+</script>
+</body>
+</html>
